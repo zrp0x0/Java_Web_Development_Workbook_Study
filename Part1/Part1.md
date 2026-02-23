@@ -354,4 +354,423 @@ public class CalcController extends HttpServlet {
 ### PRG 패턴 (POST - Redirect - GET)
 - 사용자는 컨트롤러에서 원하는 작업을 POST 방식으로 처리하기를 요청
 - POST 방식을 컨트롤러에서 처리하고 브라우저는 다른 경로로 이동(GET)하라는 응답(Redirect)
-- 블아ㅜ저는 GET 방식으로 이동
+- 브라우저는 GET 방식으로 이동
+
+---
+
+## HttpServlet
+서블릿을 구현할 때 HttpServlet을 상속해서 구현함
+- HttpServlet은 GET/POST에 맞게 doGet()/doPost()등을 제공하여 개발자가 상황에 맞게 메소드를 오버라이드하여 GET/POS 방식 처리를 나눠서 할 수 있음
+- HttpServlet을 상속받은 클래스 객체는 톰캣과 같은 WAS의 내부에서 자동으로 객체를 생성하고 관리하기 때문에 개발자가 객체 관리를 신경 쓸 필요가 없음
+- HttpServlet은 멀티 스레드에 의해서 동시에 실행될 수 있도록 처리되기 때문에 개발자는 동시에 많은 사용자를 어떻게 처리해야 하는지에 대한 고민을 줄일 수 있음
+
+### HttpServlet 생명 주기
+- 톰켓은 경로에 맞는 서블릿 클래스를 로딩하고 객체를 생성함. 이때 init()이 딱 한 번 호출됨
+- 생성된 서블릿 객체는 요청을 분석해서 GET/POST에 의해서 doGet()/doPost()를 호출함
+- 톰켓이 종료될 때 서블릿의 destroy() 메소드를 실행함
+
+### HttpServletRequest의 주요 기능
+
+#### getParameter()
+- 키를 통해서 value를 얻을 수 잇음
+- 만약 해당 키가 없으면 null을 반환함
+- 항상 문자열로 처리되기 때문에 주의해야함
+
+#### getParameterValues()
+- getParameter()와 유사하게 동일한 이름의 파라미터가 여러 개 있는 경우에 사용함
+- name이라는 파라미터가 여러 개 존재한다면, getParameterValues()를 이용해서 String[] 타입으로 변환됨
+
+#### setAttribute()
+- JSP로 전달할 데이터를 추가할 때 사용함
+- 키와 값의 형태로 데이터를 저장할 수 있음
+
+#### RequestDispatcher
+- getRequestDispatcher()를 이용해서 얻을 수 있음
+- 현재의 요청을 다른 서버의 자원(서블릿 혹은 JSP)에게 전달하는 용도로 사용함
+  - forward(): 현재까지 모든 응답 내용은 무시하고 JSP가 작성하는 내용만을 브라우저로 전달
+  - include(): 지금까지 만들어진 응답내용 + JSP가 만든 내용을 브라우저로 전달
+  - 개발에서는 거의 forward()만 사용
+
+### HttpServletResponse의 주요 기능
+주로 HttpServletResponse는 JSP에서 주로 처리되기 때문에 서블릿 내에서 직접 사용되는 일은 많지 않고 주로 sendRedirect()를 이용하는 경우가 많음
+
+#### sendRedirect()
+- 브라우저에게 다른 곳으로 가라는 응답 메세지를 전달함
+- 브라우저는 Location이 있는 응답을 받으면 화면을 처리하는 대신에 주소창에 지정된 주소로 이동하고, 다시 호출하게 됨
+
+### TodoListController 구현
+```java
+package com.zerock.w1.todo;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "todoListController", urlPatterns = "/todo/list")
+public class TodoListController extends HttpServlet {
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        System.out.println("/todo/list");
+
+        req.getRequestDispatcher("/WEB-INF/todo/list.jsp").forward(req, resp);
+    }
+}
+```
+
+```html
+<html>
+<head>
+    <title>Title</title>
+</head>
+<body>
+    <h1>List Page</h1>
+</body>
+</html>
+```
+
+### TodoRegisterController의 구현
+```java
+package com.zerock.w1.todo;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "todoRegisterController", urlPatterns = "/todo/register")
+public class TodoRegisterController extends HttpServlet {
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        System.out.println("입력 화면을 볼 수 있도록 구성");
+
+        req.getRequestDispatcher("/WEB-INF/todo/register.jsp").forward(req, resp);
+    }
+
+    @Override
+    protected void doPost(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        System.out.println("입력을 처리하고 목록 페이지로 이동");
+
+        resp.sendRedirect("/todo/list");
+    }
+}
+```
+
+```html
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+</head>
+<body>
+    <form action="/todo/register" method="post">
+        <button type="submit">SEND</button>
+    </form>
+</body>
+</html>
+```
+
+---
+
+## 모델(Model)
+
+### 모델과 3티어
+모델은 컨트롤러에 필요한 기능이나 데이터를 처리해 주는 존재지만
+시스템 전체로 보면 컨트롤러와 뷰를 제외한 남은 부분
+보통 서비스 계층(로직 처리)와 영속 계층(데이터 처리)으로 구분함
+
+### DTO(Data Transfer Object)
+3티어로 분리하게 되면 반드시 계층이나 객체들 간에 데이터 교환이 이루어지게 됨
+이 경우 대부분은 한 개 이상의 데이터를 전달할 때가 많기 때문에 여러 개의 데이터를 묶어서 하나의 객체로 전달하는 것을 
+DTO라고 함
+DTO는 여러 개의 데이터를 묶어서 필요한 곳에 전달하거나 호출을 결과로 받는 방식을 사용하기 때문에
+대부분은 Java Beans 형태로 구성하는 경우가 많음
+- 생성자가 없거나 반드시 파라미터가 없는 생성자 함수를 가지는 형태
+- 속성은 private
+- getter/setter를 제공할 것
+
+이외에도 Serializable 인터페이스를 구현해야하는 등의 규칙이 존재하지만 최소한의 규칙은 앞의 3가지 규격을 지키면 됨
+
+#### TodoDTO
+```java
+package com.zerock.w1.todo.dto;
+
+import java.time.LocalDate;
+
+public class TodoDTO {
+
+    private Long tno;
+
+    private String title;
+
+    private LocalDate dueDate;
+
+    private boolean finished;
+
+    public Long getTno() {
+        return tno;
+    }
+
+    public void setTno(Long tno) {
+        this.tno = tno;
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
+    }
+
+    public LocalDate getDueDate() {
+        return dueDate;
+    }
+
+    public void setDueDate(LocalDate dueDate) {
+        this.dueDate = dueDate;
+    }
+
+    public boolean isFinished() {
+        return finished;
+    }
+
+    public void setFinished(boolean finished) {
+        this.finished = finished;
+    }
+
+    @Override
+    public String toString() {
+        return "TodoDTO{" +
+                "tno=" + tno +
+                ", title='" + title + '\'' +
+                ", dueDate=" + dueDate +
+                ", finished=" + finished +
+                '}';
+    }
+}
+```
+
+### 서비스 객체
+DTO는 주로 서비스 객체의 파라미터나 리턴 타입으로 사용됨
+서비스 객체는 간단히 말하면 기능(로직)들의 묶음이라고 할 수 있음
+서비스 객체는 프로그램이 구현해야하는 기능들의 실제 처리를 담당한다고 생각하면 됨
+
+### TodoService 클래스
+```java
+package com.zerock.w1.todo.service;
+
+import com.zerock.w1.todo.dto.TodoDTO;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public enum TodoService {
+    INSTANCE;
+
+    public void register(TodoDTO todoDTO) {
+        System.out.println("DEBUG.............." + todoDTO);
+    }
+
+    public List<TodoDTO> getList() {
+        List<TodoDTO> todoDTOS = IntStream.range(0, 10).mapToObj(i -> {
+            TodoDTO dto = new TodoDTO();
+            dto.setTno((long)i);
+            dto.setTitle("Todo.."+i);
+            dto.setDueDate(LocalDate.now());
+
+            return dto;
+        }).collect(Collectors.toList());
+
+        return todoDTOS;
+    }
+}
+```
+- INSTANCE: 싱글톤으로 구현할 수 있음
+  - TodoService.INSATNACE로 바로 사용할 수 있음
+
+### TodoListController의 처리
+```java
+package com.zerock.w1.todo;
+
+import com.zerock.w1.todo.dto.TodoDTO;
+import com.zerock.w1.todo.service.TodoService;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+
+@WebServlet(name = "todoListController", urlPatterns = "/todo/list")
+public class TodoListController extends HttpServlet {
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        System.out.println("/todo/list");
+
+        List<TodoDTO> dtoList = TodoService.INSTANCE.getList();
+
+        req.setAttribute("list", dtoList);
+
+        req.getRequestDispatcher("/WEB-INF/todo/list.jsp").forward(req, resp);
+    }
+}
+```
+
+### JSP - EL(Expression Language)
+JSP 코드에서 사용한 ${}는 EL 표현식임
+- EL을 사용하면 자바 코드를 몰라도 getter/setter를 호출할 수 있음
+```html
+${list[0].tno} == ${list[0].getTno()}
+```
+
+### JSTL(JavaServer Pages Standard Tag Library)
+반목문 / 조건문을 사용할 수 있음
+- var: EL에서 사용될 변수 이름
+- items: 컬렉션
+- begin/end: 반복의 시작/끝
+
+JSTL을 사용하기 위해서는 의존성 설정을 해주어야함
+```java
+implementation group: 'jstl', name: 'jstl', version: '1.2'
+```
+
+```html
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %> // 이것도 붙여줘야 JSTL을 사용할 수 있음
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+</head>
+<body>
+    <h1>List Page</h1>
+
+    <ul>
+        <c:forEach var="dto" items="${list}">
+            <li>${dto}</li>
+        </c:forEach>
+    </ul>
+</body>
+</html>
+```
+
+### Todo 조회
+```java
+package com.zerock.w1.todo.service;
+
+import com.zerock.w1.todo.dto.TodoDTO;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+
+public enum TodoService {
+    INSTANCE;
+
+    public void register(TodoDTO todoDTO) {
+        System.out.println("DEBUG.............." + todoDTO);
+    }
+
+    public List<TodoDTO> getList() {
+        List<TodoDTO> todoDTOS = IntStream.range(0, 10).mapToObj(i -> {
+            TodoDTO dto = new TodoDTO();
+            dto.setTno((long)i);
+            dto.setTitle("Todo.."+i);
+            dto.setDueDate(LocalDate.now());
+
+            return dto;
+        }).collect(Collectors.toList());
+
+        return todoDTOS;
+    }
+
+    public TodoDTO get(Long tno) {
+        TodoDTO dto = new TodoDTO();
+        dto.setTno(tno);
+        dto.setTitle("Sample Todo");
+        dto.setDueDate(LocalDate.now());
+        dto.setFinished(true);
+
+        return dto;
+    }
+}
+```
+
+```java
+package com.zerock.w1.todo;
+
+import com.zerock.w1.todo.dto.TodoDTO;
+import com.zerock.w1.todo.service.TodoService;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "todoReadController", urlPatterns = "/todo/read")
+public class TodoReadController extends HttpServlet {
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        System.out.println("/todo/read");
+
+        Long tno = Long.parseLong(req.getParameter("tno"));
+
+        TodoDTO dto = TodoService.INSTANCE.get(tno);
+
+        req.setAttribute("dto", dto);
+
+        req.getRequestDispatcher("/WEB-INF/todo/read.jsp").forward(req, resp);
+    }
+
+}
+```
+
+```html
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+</head>
+<body>
+    <div>${dto.tno}</div>
+    <div>${dto.title}</div>
+    <div>${dto.dueDate}</div>
+    <div>${dto.finished}</div>
+</body>
+</html>
+```
