@@ -206,3 +206,152 @@ public class MyServlet extends HttpServlet {
 이러한 문제를 해결하기위해 나온 방식 **Web MVC**
 
 ---
+
+## Web MVC 방식
+
+### MVC 구조와 서블릿/JSP
+서블릿 코드의 경우 자바 코드를 이용할 수 있고, 상속이나 인터페이스의 처리도 가능함. HTTP로 전달된 메시지를 구성하는 HTML을 처리할 때 상당히 많은 양의 코드를 작성해야함. JSP의 경우 HTML 코드를 바로 사용할 수 있으므로 HTTP 메세지 작성에는 적합하지만, 자바 코드를 재사용하는 문제나 자바 코드와 HTML이 혼재하는 것과 같은 여러 문제가 존재함
+따라서 다음과 같이 처리함
+- Request => Servlet
+  - 응답에 필요한 데이터 완성
+  - 다른 객체들 연동 협업 처리
+  - 상속이나 인터페이스의 활용
+  - 코드의 재사용
+
+- Servlet => JSP
+  - EL을 이용해서 데이터 출력
+  - HTML 코드 활용
+  - 브라우저로 전송할 최종 결과 완성
+
+- JSP => Response
+
+#### MVC
+- Model - View - Controller
+  - Controller: 요청을 받는 부분
+  - View: 응답을 보여주는 부분
+  - Model 데이터를 처리하는 부분
+
+### MVC 구조로 다시 설계하는 계산기
+- 브라우저의 호출은 반드시 컨트롤러 역할을 하는 서블릿을 호출하도록 구성한다
+- JSP는 브라우저에서 직접 호출하지 않도록 하고 Controller를 통해서만 JSP에 접근하도록 구성한다
+
+### 컨르롤러에서 뷰 호출
+```java
+package com.zerock.w1.calc;
+
+import javax.servlet.RequestDispatcher;
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "inputController", urlPatterns = "/calc/input")
+public class InputController extends HttpServlet {
+
+    @Override
+    protected void doGet(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+        System.out.println("InputController...doGet...");
+
+        RequestDispatcher dispatcher = req.getRequestDispatcher("/WEB-INF/calc/input.jsp");
+
+        dispatcher.forward(req, resp);
+    }
+}
+```
+- RequestDispatcher를 이용한 요청 배포
+  - 서블릿에 전달된 요청을 다른 쪽으로 전달 혹은 배포하는 역할을 하는 객체
+  - WEB-INF는 브라우저에서 직접 접근이 불가능한 경로로 상당히 특별한 경로 (브라우저에서 직접 호출 불가능)
+
+### Post 방식을 통한 처리 요청
+```java
+package com.zerock.w1.calc;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "calcController", urlPatterns = "/calc/makeResult")
+public class CalcController extends HttpServlet {
+
+    @Override
+    protected void doPost(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        String num1 = req.getParameter("num1");
+        String num2 = req.getParameter("num2");
+
+        System.out.printf(" num1: %s", num1);
+        System.out.printf(" num2: %s", num2);
+    }
+}
+```
+- doPost(): 브라우저에서 POST 방식으로 호출하는 경우에만 호출이 가능함
+- req.getParameter(): 쿼리 스트링으로 전달되는 파라미터를 문자열로 받을 수 있음
+
+```html
+<%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<html>
+<head>
+    <title>Title</title>
+</head>
+<body>
+    <form action="/calc/makeResult" method="post">
+        <input type="number" name="num1">
+        <input type="number" name="num2">
+        <button type="submit">SEND</button>
+    </form>
+</body>
+</html>
+```
+- /calc/makeResult로 경로를 수정해주어야함
+
+### sendRedirect()
+POST 방식 처리는 가능하면 빨리 다른 페이지를 보도록 브라우저 화면을 이동시키는 것이 좋음
+현재 CalcController는 보여줄 결과를 만들어주지 않아, SEND를 계속 호출할 수 있게 됨
+이때 사용하는것이 HttpServletResponse의 sendRedirect()
+```java
+package com.zerock.w1.calc;
+
+import javax.servlet.ServletException;
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+
+@WebServlet(name = "calcController", urlPatterns = "/calc/makeResult")
+public class CalcController extends HttpServlet {
+
+    @Override
+    protected void doPost(
+            HttpServletRequest req,
+            HttpServletResponse resp
+    ) throws ServletException, IOException {
+
+        String num1 = req.getParameter("num1");
+        String num2 = req.getParameter("num2");
+
+        System.out.printf(" num1: %s", num1);
+        System.out.printf(" num2: %s", num2);
+
+        resp.sendRedirect("/index");
+    }
+}
+```
+- resp.sendRedirect("/index): /index라는 경로로 GET 호출을 수행
+- 현재는 /index에 해당하는 컨트롤러가 존재하지 않기 때문에 404에러가 발생
+
+### PRG 패턴 (POST - Redirect - GET)
+- 사용자는 컨트롤러에서 원하는 작업을 POST 방식으로 처리하기를 요청
+- POST 방식을 컨트롤러에서 처리하고 브라우저는 다른 경로로 이동(GET)하라는 응답(Redirect)
+- 블아ㅜ저는 GET 방식으로 이동
