@@ -40,4 +40,13 @@ public enum TodoService {
         TodoDTO dto = modelMapper.map(vo, TodoDTO.class);
         return dto;
     }
+
+    public void modify(TodoDTO todoDTO) throws Exception {
+        TodoVO vo = modelMapper.map(todoDTO, TodoVO.class);
+        dao.updateOne(vo);
+    }
+
+    public void remove(Long tno) throws Exception {
+        dao.deleteOne(tno);
+    }
 }
